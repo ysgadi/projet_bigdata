@@ -1,0 +1,33 @@
+
+.legend i {
+    width: 25px;
+    height: 32px;
+    float: left;
+    margin-right: 12px;
+    opacity: 3;
+    text-decoration-color: black;
+}
+
+.info1 {
+    padding: 16px 70px;
+    font: 20px/23px Arial, Helvetica, sans-serif;
+    background: white;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+}
+
+
+.info h4 {
+    width: 25px;
+    margin: 0 0 10px;
+    color: #777;
+}
+.info {
+    padding: 10px 15px;
+    font: 20px/26px Arial, Helvetica, sans-serif;
+    background: white;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+}

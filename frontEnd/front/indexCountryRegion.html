@@ -1,0 +1,377 @@
+<!--Page Principale Programme !-->
+<!-- Mise en Page HTML !-->
+<!doctype html>
+<html lang="en">
+
+<head>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/chroma-js/0.5.9/chroma.min.js"></script>
+    <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+    <script src="http://d3js.org/topojson.v1.min.js"></script>
+    <!-- Chargement Css leaflet !-->
+    <link rel="stylesheet" href="leaflet/leaflet.css" type="text/css">
+    <link rel="stylesheet" href="style.css" type="text/css">
+
+    <!-- Chargement JavaScript des cartes Google  !-->
+
+    <style>
+                * {
+      margin: 0;
+      padding: 0;
+      -webkit-box-sizing: border-box;
+      -moz-box-sizing: border-box;
+      box-sizing: border-box;
+    }
+
+    body,
+    html,
+    #map {
+      height: 100%;
+    }
+
+    body {
+      color: #333;
+      font-family: sans-serif;
+    }
+
+    #map {
+      background: white;
+    }
+    </style>
+    <title> leaflet </title>
+    <script src="leaflet/leaflet.js" type="text/javascript"></script>
+</head>
+
+<body>
+    <h1>Population par Pays / Par Region / Par Ville </h1>
+    <div id="map"></div>
+    <script type="text/javascript">
+
+
+        var street_url = "http://{s}.tile.osm.org/{z}/{x}/{y}.png";
+
+        streets = L.tileLayer(street_url);
+
+        // initialisation de la carte
+        var map = L.map('map');
+
+        L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        var topoLayer;
+        var countryData;
+        var regionData;
+        var cityData;
+
+        var loadedRegion = 0;
+        var loadedCity = 0;
+        var loadedCountry = 1;
+        var grades = [0, 10, 100, 1000, 10000, 25000, 50000, 75000, 100000, 250000, 500000, 750000, 1000000, 2500000, 5000000, 7500000, 10000000, 15000000, 20000000, 40000000, 60000000, 80000000, 100000000, 250000000, 500000000, 750000000, 1000000000],
+            coul = ["#00007F", "#0000A8", "#0000D1", "#0000FA", "#0010FF", "#0034FF", "#0058FF", "#007CFF", "#00A0FF", "#00C4FF", "#05ECF1", "#22FFD4", "#3FFFB7", "#5CFF9A", "#79FF7D", "#96FF5F", "#B3FF42", "#D0FF25", "#EDFF08", "#FFDA00", "#FFB900"
+                , "#FF9800", "#FF7600", "#FF5500", "#FF3400", "#FE1200", "#D50000", "#AC0000", "#7F0000"];
+
+
+
+        function legendInit() {
+            legend = L.control({ position: 'bottomright' });
+
+            legend.onAdd = function (map) {
+
+                var div = L.DomUtil.create('div', 'info1 legend'),
+                    labels = [];
+                // loop through our density intervals and generate a label with a colored square for each interval
+                var i = (grades.length) - 1;
+                while (i >= 0) {
+                    div.innerHTML += '<i style="background:' + getColor(grades[i]) + '">&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp' + format(grades[i]) + '</i><br> '
+                    i--;
+                }
+                return div;
+            };
+            legend.addTo(map);
+        }
+
+
+        function onEachFeature(feature, layer) {
+
+            layer.bindPopup(" Pays: " + feature.properties.codeP + " Population " + format(feature.properties.pop));
+
+        }
+        function onEachFeatureRegion(feature, layer) {
+
+            layer.bindPopup(" Region " + feature.properties.region + " Population " + format(feature.properties.pop));
+
+        }
+        function onEachFeatureCity(feature, layer) {
+
+            layer.bindPopup(" Ville " + feature.properties.city + " Population " + format(feature.properties.pop));
+
+        }
+        function getCountry() {
+            var result = null;
+            $.ajax({
+                async: false,
+                url: "/getPopData1",
+
+                dataType: "json",
+                success: function (data) {
+                    result = data;
+                }
+            }
+            );
+            return result;
+        }
+        function getRegion() {
+            var result = null;
+            $.ajax({
+                async: false,
+                url: "/getPopData2",
+
+                dataType: "json",
+                success: function (data) {
+                    result = data;
+                }
+            }
+            );
+            return result;
+        }
+        function getCity() {
+            var result = null;
+            $.ajax({
+                async: false,
+                url: "/getPopData3",
+
+                dataType: "json",
+                success: function (data) {
+                    result = data;
+                }
+            }
+            );
+            return result;
+        }
+        function showToMap(data, numData) {
+
+
+            if (numData == 1) {
+                console.log("data" + data[0]);
+                topoLayer = new L.GeoJSON(data, {
+
+                    pointToLayer: function (feature, latlng) {
+                        return L.circleMarker(latlng, mark(feature));
+                    },
+                    onEachFeature: onEachFeature
+                });
+                topoLayer.addData(countryData);
+                topoLayer.addTo(map);
+                // map.fitBounds(topoLayer.getBounds());
+
+            }
+
+            if (numData == 2) {
+                console.log("data" + data[0]);
+                topoLayer = new L.GeoJSON(data, {
+
+                    pointToLayer: function (feature, latlng) {
+                        return L.circleMarker(latlng, mark(feature));
+                    },
+                    onEachFeature: onEachFeatureRegion
+                });
+                topoLayer.addData(countryData);
+                topoLayer.addTo(map);
+                //  map.fitBounds(topoLayer.getBounds());
+            }
+            if (numData == 3) {
+                var bound = map.getBounds();
+                north = bound.getNorth();
+                south = bound.getSouth();
+                west = bound.getWest();
+                east = bound.getEast();
+                console.log("data" + data[0]);
+                topoLayer = new L.GeoJSON(data, {
+
+                    pointToLayer: function (feature, latlng) {
+                        return L.circleMarker(latlng, mark(feature));
+                    },
+                    onEachFeature: onEachFeatureCity,
+                    filter: function (feature, layer) {
+                        var long = feature.geometry.coordinates[0];
+                        var lat = feature.geometry.coordinates[1];
+
+                        if (long < east && long > west && lat < north && lat > south) {
+
+                            return true;
+
+                        }
+                        else
+
+                            return false;
+                    }
+
+                });
+                topoLayer.addData(countryData);
+                topoLayer.addTo(map);
+                /// map.fitBounds(topoLayer.getBounds());
+            }
+
+        }
+
+        var countryData = getCountry();
+        var regionData = getRegion();
+        var cityData = getCity();
+        function getColor(d) {
+
+
+            return d > grades[29] ? coul[28] :
+                d > grades[28] && d <= grades[29] ? coul[28] :
+                    d > grades[27] && d <= grades[28] ? coul[28] :
+                        d > grades[26] && d <= grades[27] ? coul[27] :
+                            d > grades[25] && d <= grades[26] ? coul[26] :
+                                d > grades[24] && d <= grades[25] ? coul[25] :
+                                    d > grades[23] && d <= grades[24] ? coul[24] :
+                                        d > grades[22] && d <= grades[23] ? coul[23] :
+                                            d > grades[21] && d <= grades[22] ? coul[22] :
+                                                d > grades[20] && d <= grades[21] ? coul[21] :
+                                                    d > grades[19] && d <= grades[20] ? coul[20] :
+                                                        d > grades[18] && d <= grades[19] ? coul[19] :
+                                                            d > grades[17] && d <= grades[18] ? coul[18] :
+                                                                d > grades[16] && d <= grades[17] ? coul[17] :
+                                                                    d > grades[15] && d <= grades[16] ? coul[16] :
+                                                                        d > grades[14] && d <= grades[15] ? coul[15] :
+                                                                            d > grades[13] && d <= grades[14] ? coul[14] :
+                                                                                d > grades[12] && d <= grades[13] ? coul[13] :
+                                                                                    d > grades[11] && d <= grades[12] ? coul[12] :
+                                                                                        d > grades[10] && d <= grades[11] ? coul[11] :
+                                                                                            d > grades[9] && d <= grades[10] ? coul[10] :
+                                                                                                d > grades[8] && d <= grades[9] ? coul[9] :
+                                                                                                    d > grades[7] && d <= grades[8] ? coul[8] :
+                                                                                                        d > grades[6] && d <= grades[7] ? coul[7] :
+                                                                                                            d > grades[5] && d <= grades[6] ? coul[6] :
+                                                                                                                d > grades[4] && d <= grades[5] ? coul[5] :
+                                                                                                                    d > grades[3] && d <= grades[4] ? coul[4] :
+                                                                                                                        d > grades[2] && d <= grades[3] ? coul[3] :
+                                                                                                                            d > grades[1] && d <= grades[2] ? coul[2] :
+                                                                                                                                d > grades[0] && d <= grades[1] ? coul[1] :
+                                                                                                                                    d <= grades[0] ? coul[0] :
+                                                                                                                                        'black';
+        }
+
+        function format(num) {
+
+
+            return ((num / 1000000) >= 1000) ? num / 1000000000 + 'G' :
+                ((num / 10000) >= 100) ? num / 1000000 + 'M' :
+                    ((num / 100) >= 100) ? num / 1000 + 'k' :
+
+                        num;
+
+
+        }
+
+
+
+        function clear(x) {
+            map.removeLayer(x);
+        }
+
+
+
+        // Reponse a un zoom
+
+        map.on("zoomstart", function (e) {
+
+            //
+            var zoom1 = map.getZoom();
+            console.log(" niveau", zoom1);
+            if (zoom1 >= 5 && zoom1 < 8) {
+                loadedCountry = 0;
+            
+                if (loadedRegion == 0) {
+                    clear(topoLayer);
+                    showToMap(regionData, 2);
+                    loadedRegion = 1;
+                }
+                //levelRegion();
+            }
+
+            if (zoom1 >= 8) {
+                //if (zoom1==9){
+                clear(topoLayer);
+                // }
+                loadedCountry = 0;
+                loadedRegion = 0;
+                console.log("funck zoom 5")
+
+
+                showToMap(cityData, 3);
+
+
+                //levelRegion();
+            }
+            if (zoom1 < 5) {
+                loadedRegion = 0;
+
+
+                //console.log(layerGroup);
+                //  map.removeLayer(topoLayerRegion);
+
+
+                if (loadedCountry == 0) {
+                    clear(topoLayer);
+                    showToMap(countryData, 1);
+                    //layerGroup.clearLayers();
+                    //ayerGroup.addLayer(point);
+                    //layerGroup.addTo(map);
+                }
+
+            }
+        }
+        );
+
+        // Extraction des points afficher initialement .
+
+
+        // fonction qui gere l'apparence des points 
+
+        function mark(feature) {
+            // body...
+
+            var geojsonMarkerOptions = {
+                radius: 10,
+                fillColor: getColor(feature.properties.pop),
+                color: getColor(feature.properties.pop),
+                weight: 1,
+                opacity: 5,
+                fillOpacity: 0.8
+            };
+
+            return geojsonMarkerOptions;
+
+        }
+        function onMapClick(e) {
+            //console.log("clique sur la carte");
+
+            var currentZoom = map.getZoom();
+            var center = map.getBounds();
+            var popup = L.popup()
+                .setLatLng(e.latlng)
+                .setContent("La zone clique " + e.latlng.lat + " currentZoom " + currentZoom)
+                .openOn(map);
+
+
+        }
+        function loadCityData() {
+            showToMap(cityData, 3);
+        }
+        legendInit();
+        //init();
+        console.log("fuck", countryData);
+        showToMap(countryData, 1);
+        map.fitBounds(topoLayer.getBounds());
+        map.on('click', onMapClick);
+
+
+
+    </script>
+
+</body>
+
+</html>
